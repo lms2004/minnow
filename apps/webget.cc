@@ -1,4 +1,6 @@
 #include "socket.hh"
+#include "tcp_minnow_socket.hh"
+
 
 #include <cstdlib>
 #include <iostream>
@@ -9,7 +11,7 @@ using namespace std;
 
 void get_URL( const std::string& host, const std::string& path )
 {
-  TCPSocket client;
+  CS144TCPSocket client;
   Address server( host, "http" ); // Port should be 80 by default for HTTP
 
   client.connect( server );

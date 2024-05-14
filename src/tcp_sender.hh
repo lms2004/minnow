@@ -69,10 +69,27 @@ private:
 
   // 重新设置RTO
   void resetRTO();
+
 // Receive:
 
-  // 处理返回的ACK
-  void processACK(const TCPReceiverMessage& msg);
+  // 检查返回message是否有错误
+  bool check_for_errors(const TCPReceiverMessage& msg);
+
+  // 检查返回message是否为无效ACK
+  bool is_invalid_ack(const std::optional<Wrap32>& ackno) const;
+
+  // 检查返回message是否为重复ACK
+  bool is_duplicate_ack(const TCPReceiverMessage& msg) const;
+
+  // 更新ACK信息
+  void update_ack_info(const TCPReceiverMessage& msg);
+
+  // 更新窗口大小
+  void update_window_size(uint16_t new_window_size);
+
+  // 更新未确认的段
+  void update_unacked_segments(const std::optional<Wrap32>& ackno);
+
 
   // 处理已经ack数据分段
   void handle_ack();

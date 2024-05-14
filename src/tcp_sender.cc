@@ -90,51 +90,38 @@ void TCPSender::push( const TransmitFunction& transmit )
 }
 
 
-void TCPSender::receive( const TCPReceiverMessage& msg )
-{
-  if (!msg.ackno.has_value()) {
-      if(!msg.window_size){
-        input_.set_error();
-      }
-      return;     
-  }    
-
-  if(msg.RST){
-      input_.set_error();
-  }
-  // 无效ACK  
-  if(msg.ackno > currentSeqNum_ ){
-
-    return;
-  }
-  
-  // 重复ACK
-  if(last_Ack_Seq.has_value()){
-    if(last_Ack_Seq >= msg.ackno && window_size_ == msg.window_size){
-      return;
+void TCPSender::receive(const TCPReceiverMessage& msg) {
+    // 检查返回message是否有错误，如果有则返回
+    if (check_for_errors(msg)) {
+        return;
     }
-  }
-  is_SYN_ACK = true;
 
-  last_Ack_Seq = msg.ackno.value();
+    // 检查返回message是否为无效ACK，如果是则返回
+    if (is_invalid_ack(msg.ackno)) {
+        return;
+    }
 
-  // 更新当前确定的接收绝对序列号
-  checkout = msg.ackno.value().unwrap(isn_,checkout);
-  
-  // 释放已经缓冲区已经ack的数据
-  handle_ack();
+    // 检查返回message是否为重复ACK，如果是则返回
+    if (is_duplicate_ack(msg)) {
+        return;
+    }
 
-  // 更新窗口大小
-  window_size_ = msg.window_size;
+    // 更新ACK信息
+    update_ack_info(msg);
 
-  // 更新待确认的数据个数
-  unAckedSegmentsNums = currentSeqNum_.distance(msg.ackno.value());
+    // 释放已经被ACK的数据段
+    handle_ack();
 
-  // 重置RTO翻倍数据
-  resetRTO();
+    // 更新窗口大小
+    update_window_size(msg.window_size);
 
-  return;
+    // 更新未确认的段
+    update_unacked_segments(msg.ackno);
+
+    // 重置RTO相关状态
+    resetRTO();
 }
+
 
 
 void TCPSender::tick(uint64_t ms_since_last_tick, const TransmitFunction& transmit)
@@ -153,13 +140,15 @@ void TCPSender::tick(uint64_t ms_since_last_tick, const TransmitFunction& transm
 
       is_RTO_double = true;     
 
-      // 遍历未确认段，并传输每个段
+      // 传输未确认段
       if (!unAckedSegments.empty()) {
           transmit(unAckedSegments.begin()->second);
       }
     }
 }
 
+
+// Push:
 
 // 进行“窗口探测”
 void TCPSender::handleWindowProbe(const TransmitFunction& transmit) {
@@ -176,7 +165,6 @@ void TCPSender::handleWindowProbe(const TransmitFunction& transmit) {
         
         // 处理序列号
         handleSqeno(message);
-        print(message);
         transmit(message);
     }
     
@@ -240,34 +228,13 @@ void TCPSender::handleSqeno(TCPSenderMessage& message){
     unAckedSegmentsNums += message.sequence_length();
 }
 
+// receive
+
 // 重新设置RTO
 void TCPSender::resetRTO() {
     is_RTO_double = false;
     initial_RTO_ms_ = raw_RTO_ms;
     since_last_send = 0;
-}
-
-// 处理返回的ACK
-void TCPSender::processACK(const TCPReceiverMessage& msg) {
-    if (!msg.ackno.has_value()) {
-        return;
-    }
-
-    if (msg.RST) {
-        input_.set_error();
-    }
-
-    // 无效ACK  
-    if (msg.ackno > currentSeqNum_) {
-        return;
-    }
-
-    // 重复ACK
-    if (last_Ack_Seq.has_value()) {
-        if (last_Ack_Seq >= msg.ackno && window_size_ == msg.window_size) {
-            return;
-        }
-    }
 }
 
 // 处理已经ack数据分段
@@ -284,8 +251,65 @@ void TCPSender::handle_ack() {
     }
 }
 
+// 检查返回message是否有错误
+bool TCPSender::check_for_errors(const TCPReceiverMessage& msg) {
+    // 如果ackno没有值并且窗口大小为0，设置输入流错误
+    if (!msg.ackno.has_value()) {
+        if (!msg.window_size) {
+            input_.set_error();
+        }
+        return true;
+    }
+
+    // 如果接收到的消息有RST标志，设置输入流错误
+    if (msg.RST) {
+        input_.set_error();
+        return true;
+    }
+
+    return false;
+}
+
+// 检查返回message是否为无效ACK
+bool TCPSender::is_invalid_ack(const std::optional<Wrap32>& ackno) const {
+    // 如果ackno大于当前序列号，则为无效ACK
+    return ackno > currentSeqNum_;
+}
+
+// 检查返回message是否为重复ACK
+bool TCPSender::is_duplicate_ack(const TCPReceiverMessage& msg) const {
+    // 如果last_Ack_Seq有值且大于等于当前ackno并且窗口大小相同，则为重复ACK
+    return last_Ack_Seq.has_value() &&
+           last_Ack_Seq >= msg.ackno &&
+           window_size_ == msg.window_size;
+}
+
+// 更新ACK信息
+void TCPSender::update_ack_info(const TCPReceiverMessage& msg) {
+    // 设置SYN确认标志
+    is_SYN_ACK = true;
+    // 更新最后的ACK序列号
+    last_Ack_Seq = msg.ackno.value();
+    // 解包ACK序列号并更新当前已确认的绝对序列号
+    checkout = msg.ackno.value().unwrap(isn_, checkout);
+}
+
+// 更新窗口大小
+void TCPSender::update_window_size(uint16_t new_window_size) {
+    window_size_ = new_window_size;
+}
+
+// 更新未确认的段
+void TCPSender::update_unacked_segments(const std::optional<Wrap32>& ackno) {
+    if (ackno.has_value()) {
+        // 计算并更新未确认的字节数
+        unAckedSegmentsNums = currentSeqNum_.distance(ackno.value());
+    }
+}
 
 
+
+// tick
 
 //  调整重传超时时间
 void TCPSender::handle_RTO(){
