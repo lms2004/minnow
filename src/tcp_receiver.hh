@@ -34,9 +34,6 @@ private:
   // 下一个相对序列号
   Wrap32 next_ackno = Wrap32( 0 );
 
-  // 最接近的绝对序列号
-  uint64_t checkpoint = 0;
-
   bool is_zero_point_set = false;
   bool RST_ = reassembler_.reader().has_error();
 };
