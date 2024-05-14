@@ -27,7 +27,7 @@ public:
 protected:
   // Please add any additional state to the ByteStream here, and not to the Writer and Reader interfaces.
   uint64_t capacity_;
-  std::vector<char> buffer_ ;
+  std::vector<char> buffer_;
   uint64_t bytes_popped_ = 0; // Initialize to zero
   uint64_t bytes_pushed_ = 0; // Initialize to zero
   bool close_ = false;        // Initialize to false

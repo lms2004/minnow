@@ -7,22 +7,25 @@
 #include <cstdint>
 #include <functional>
 #include <list>
+#include <map>
 #include <memory>
 #include <optional>
 #include <queue>
-#include <map>
 
 class TCPSender
 {
 public:
   /* 用给定的默认重传超时时间和可能的初始序列号构造TCP发送者 */
   TCPSender( ByteStream&& input, Wrap32 isn, uint64_t initial_RTO_ms )
-    : input_( std::move( input ) ), isn_( isn ), initial_RTO_ms_( initial_RTO_ms ),raw_RTO_ms(initial_RTO_ms)
-    ,currentSeqNum_(isn),last_Ack_Seq(isn)
-    ,window_size_(2)
-    ,unAckedSegments()
+    : input_( std::move( input ) )
+    , isn_( isn )
+    , initial_RTO_ms_( initial_RTO_ms )
+    , raw_RTO_ms( initial_RTO_ms )
+    , currentSeqNum_( isn )
+    , last_Ack_Seq( isn )
+    , window_size_( 2 )
+    , unAckedSegments()
   {}
-
 
   /* 生成一个空的TCPSenderMessage */
   TCPSenderMessage make_empty_message() const;
@@ -45,87 +48,82 @@ public:
   Writer& writer() { return input_.writer(); }
   const Writer& writer() const { return input_.writer(); }
 
-
   // 只读访问输入流的读取器（外部不能读取）
   const Reader& reader() const { return input_.reader(); }
 
 private:
-// push:
+  // push:
 
   // “窗口探测”
-  void handleWindowProbe(const TransmitFunction& transmit);
+  void handleWindowProbe( const TransmitFunction& transmit );
 
   // 处理SYN头
-  bool handleInitialSYN(TCPSenderMessage& message);
+  bool handleInitialSYN( TCPSenderMessage& message );
 
   // 处理分段payload
-  void handlePayload(TCPSenderMessage& message);
+  void handlePayload( TCPSenderMessage& message );
 
   // 处理分段序列号
-  void handleSqeno(TCPSenderMessage& message); 
-  
+  void handleSqeno( TCPSenderMessage& message );
+
   // 处理分段FIN
-  bool handleFIN(TCPSenderMessage& message);
+  bool handleFIN( TCPSenderMessage& message );
 
   // 重新设置RTO
   void resetRTO();
 
-// Receive:
+  // Receive:
 
   // 检查返回message是否有错误
-  bool check_for_errors(const TCPReceiverMessage& msg);
+  bool check_for_errors( const TCPReceiverMessage& msg );
 
   // 检查返回message是否为无效ACK
-  bool is_invalid_ack(const std::optional<Wrap32>& ackno) const;
+  bool is_invalid_ack( const std::optional<Wrap32>& ackno ) const;
 
   // 检查返回message是否为重复ACK
-  bool is_duplicate_ack(const TCPReceiverMessage& msg) const;
+  bool is_duplicate_ack( const TCPReceiverMessage& msg ) const;
 
   // 更新ACK信息
-  void update_ack_info(const TCPReceiverMessage& msg);
+  void update_ack_info( const TCPReceiverMessage& msg );
 
   // 更新窗口大小
-  void update_window_size(uint16_t new_window_size);
+  void update_window_size( uint16_t new_window_size );
 
   // 更新未确认的段
-  void update_unacked_segments(const std::optional<Wrap32>& ackno);
-
+  void update_unacked_segments( const std::optional<Wrap32>& ackno );
 
   // 处理已经ack数据分段
   void handle_ack();
 
-// Tick:
+  // Tick:
 
   //  TCP 使用指数退避策略来调整重传超时时间
   void handle_RTO();
 
-
   // 构造函数中初始化的变量
-  ByteStream input_; // 输入流
-  Wrap32 isn_;       // 初始序列号
-  uint64_t initial_RTO_ms_;   // 重传超时时间（毫秒）
-  uint64_t raw_RTO_ms;        // 初始重传超时时间（毫秒
+  ByteStream input_;        // 输入流
+  Wrap32 isn_;              // 初始序列号
+  uint64_t initial_RTO_ms_; // 重传超时时间（毫秒）
+  uint64_t raw_RTO_ms;      // 初始重传超时时间（毫秒
 
+  Wrap32 currentSeqNum_;              // 当前发送数据分段的序列号
+  std::optional<Wrap32> last_Ack_Seq; // 上一个发送数据分段的序列号
 
-  Wrap32 currentSeqNum_;                    // 当前发送数据分段的序列号  
-  std::optional<Wrap32> last_Ack_Seq;       // 上一个发送数据分段的序列号  
+  uint16_t window_size_; // 当前接收方的窗口大小
 
-  uint16_t window_size_;                    // 当前接收方的窗口大小
-  
   // 记录未确认的分段
-  std::map<uint64_t,TCPSenderMessage> unAckedSegments;
-  bool is_SYN_ACK = false;            // 记录窗口是否確定
+  std::map<uint64_t, TCPSenderMessage> unAckedSegments;
+  bool is_SYN_ACK = false; // 记录窗口是否確定
 
-  uint64_t unAckedSegmentsNums = 0;   // 当前待确认的字节数
-  uint64_t checkout = 0;              // 当前已经ack的绝对序列号
-  uint64_t push_checkout = 0;         // 当前已经push的绝对序列号
+  uint64_t unAckedSegmentsNums = 0; // 当前待确认的字节数
+  uint64_t checkout = 0;            // 当前已经ack的绝对序列号
+  uint64_t push_checkout = 0;       // 当前已经push的绝对序列号
 
-  uint64_t since_last_send = 0;       // 记录上次send的时间
-  bool is_RTO_double = false;         // 记录非零窗口是否需要退避RTO（RTO增加）
+  uint64_t since_last_send = 0; // 记录上次send的时间
+  bool is_RTO_double = false;   // 记录非零窗口是否需要退避RTO（RTO增加）
 
-  bool isSYNSent_= false;   // 判断是否发送过SYN
-  bool isFINSent_= false;   // 判断是否发送过FIN
+  bool isSYNSent_ = false; // 判断是否发送过SYN
+  bool isFINSent_ = false; // 判断是否发送过FIN
 };
 
-
-void print(TCPSenderMessage message);
+void print( TCPSenderMessage message );

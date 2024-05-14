@@ -31,7 +31,8 @@ uint64_t Wrap32::unwrap( Wrap32 zero_point, uint64_t checkpoint ) const
   return checkpoint + distance - upper;
 }
 
-uint64_t Wrap32::distance(Wrap32 other){
-    uint32_t distance_ = raw_value_ - other.raw_value_;
-    return distance_;
+uint64_t Wrap32::distance( Wrap32 other )
+{
+  uint32_t distance_ = raw_value_ - other.raw_value_;
+  return distance_;
 }

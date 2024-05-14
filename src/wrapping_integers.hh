@@ -1,7 +1,7 @@
 #pragma once
 
 #include <cstdint>
-#include<iostream>
+#include <iostream>
 
 /*
  * Wrap32 类型表示一个 32 位无符号整数，具有以下特性：
@@ -23,16 +23,14 @@ public:
    * 有许多可能的绝对序列号，它们都绕过相同的 Wrap32。unwrap 方法应返回最接近检查点的那个。
    */
   uint64_t unwrap( Wrap32 zero_point, uint64_t checkpoint ) const;
-  uint64_t distance(Wrap32 other);
+  uint64_t distance( Wrap32 other );
   Wrap32 operator+( uint32_t n ) const { return Wrap32 { raw_value_ + n }; }
   bool operator==( const Wrap32& other ) const { return raw_value_ == other.raw_value_; }
-  
+
   bool operator>( const Wrap32& other ) const { return raw_value_ > other.raw_value_; }
   bool operator>=( const Wrap32& other ) const { return raw_value_ >= other.raw_value_; }
 
-  uint32_t getuint32_t() const {
-      return raw_value_;
-  }
+  uint32_t getuint32_t() const { return raw_value_; }
 
 protected:
   uint32_t raw_value_ {};

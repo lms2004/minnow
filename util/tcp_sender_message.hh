@@ -34,11 +34,9 @@ struct TCPSenderMessage
 
   // How many sequence numbers does this segment use?
   size_t sequence_length() const { return SYN + payload.size() + FIN + RST; }
-  bool operator==(const TCPSenderMessage& other) const {
-      return (seqno == other.seqno) &&
-              (SYN == other.SYN) &&
-              (payload == other.payload) &&
-              (FIN == other.FIN) &&
-              (RST == other.RST);
+  bool operator==( const TCPSenderMessage& other ) const
+  {
+    return ( seqno == other.seqno ) && ( SYN == other.SYN ) && ( payload == other.payload ) && ( FIN == other.FIN )
+           && ( RST == other.RST );
   }
 };
