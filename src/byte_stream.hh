@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <deque>
 #include <string>
 #include <string_view>
 
@@ -20,11 +21,17 @@ public:
 
   void set_error() { error_ = true; };       // Signal that the stream suffered an error.
   bool has_error() const { return error_; }; // Has the stream had an error?
+  uint64_t getUnpoppedIndex() const { return bytes_popped_; };
+  uint64_t getCapacity() const { return capacity_; };
 
 protected:
   // Please add any additional state to the ByteStream here, and not to the Writer and Reader interfaces.
   uint64_t capacity_;
-  bool error_ {};
+  std::string buffer_;
+  uint64_t bytes_popped_ = 0; // Initialize to zero
+  uint64_t bytes_pushed_ = 0; // Initialize to zero
+  bool close_ = false;        // Initialize to false
+  bool error_ = false;        // Initialize to false
 };
 
 class Writer : public ByteStream

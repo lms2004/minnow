@@ -8,7 +8,7 @@ class TCPReceiver
 {
 public:
   // Construct with given Reassembler
-  explicit TCPReceiver( Reassembler&& reassembler ) : reassembler_( std::move( reassembler ) ) {}
+  explicit TCPReceiver( Reassembler&& reassembler ) : reassembler_( std::move( reassembler ) ) {};
 
   /*
    * The TCPReceiver receives TCPSenderMessages, inserting their payload into the Reassembler
@@ -27,4 +27,16 @@ public:
 
 private:
   Reassembler reassembler_;
+
+  // 起始相对序列号
+  Wrap32 zero_point = Wrap32( 0 );
+
+  // 下一个相对序列号
+  Wrap32 next_ackno = Wrap32( 0 );
+
+  // 最接近的绝对序列号
+  uint64_t checkpoint = 0;
+
+  bool is_zero_point_set = false;
+  bool RST_ = reassembler_.reader().has_error();
 };

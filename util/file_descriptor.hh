@@ -10,6 +10,7 @@ class FileDescriptor
 {
   // FDWrapper: A handle on a kernel file descriptor.
   // FileDescriptor objects contain a std::shared_ptr to a FDWrapper.
+  // FDWrapper类与文件描述符的关系在于它是对文件描述符的封装和管理
   class FDWrapper
   {
   public:

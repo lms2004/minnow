@@ -112,7 +112,6 @@ int main()
         Tick { ( retx_timeout << TCPConfig::MAX_RETX_ATTEMPTS ) - 1U }.with_max_retx_exceeded( false ) );
       test.execute( Tick { 1 }.with_max_retx_exceeded( true ) );
     }
-
     // test credit: Cooper de Nicola
     {
       TCPConfig cfg;

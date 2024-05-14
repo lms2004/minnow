@@ -18,3 +18,9 @@ To run speed benchmarks: `cmake --build build --target speed`
 To run clang-tidy (which suggests improvements): `cmake --build build --target tidy`
 
 To format code: `cmake --build build --target format`
+
+cmake --build build --target clean
+
+cmake --build build
+
+cd /mnt/e/Web/minnow/build && /usr/bin/ctest --output-on-failure --stop-on-failure --timeout 30 -R '^byte_stream_|^reassembler_|^wrapping|^recv|^send'
