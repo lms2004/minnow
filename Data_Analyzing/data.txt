@@ -1,4 +1,3 @@
-PING 162.105.253.58 (162.105.253.58) 56(84) bytes of data.
 [1715675566.817835] 64 bytes from 162.105.253.58: icmp_seq=1 ttl=240 time=4.77 ms
 [1715675567.034754] 64 bytes from 162.105.253.58: icmp_seq=2 ttl=240 time=8.96 ms
 [1715675567.232013] 64 bytes from 162.105.253.58: icmp_seq=3 ttl=240 time=4.10 ms
