@@ -89,9 +89,6 @@ private:
   // 更新窗口大小
   void update_window_size( uint16_t new_window_size );
 
-  // 更新未确认的段
-  void update_unacked_segments( const std::optional<Wrap32>& ackno );
-
   // 处理已经ack数据分段
   void handle_ack();
 
@@ -109,13 +106,13 @@ private:
   Wrap32 currentSeqNum_;              // 当前发送数据分段的序列号
   std::optional<Wrap32> last_Ack_Seq; // 上一个发送数据分段的序列号
 
+  bool is_Probe = 0;     // 判断是否窗口检测
   uint16_t window_size_; // 当前接收方的窗口大小
 
   // 记录未确认的分段
   std::map<uint64_t, TCPSenderMessage> unAckedSegments;
   bool is_SYN_ACK = false; // 记录窗口是否確定
 
-  uint64_t unAckedSegmentsNums = 0; // 当前待确认的字节数
   uint64_t checkout = 0;            // 当前已经ack的绝对序列号
   uint64_t push_checkout = 0;       // 当前已经push的绝对序列号
 

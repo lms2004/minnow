@@ -6,7 +6,11 @@ using namespace std;
 
 uint64_t TCPSender::sequence_numbers_in_flight() const
 {
-  return unAckedSegmentsNums;
+  uint64_t Nums = 0;
+  for (const auto& Segment : unAckedSegments) {
+      Nums += Segment.second.sequence_length(); // 访问length字段并累加
+  }
+  return Nums;
 }
 
 uint64_t TCPSender::consecutive_retransmissions() const
@@ -21,6 +25,7 @@ uint64_t TCPSender::consecutive_retransmissions() const
   return exponent + is_RTO_double;
 }
 
+
 TCPSenderMessage TCPSender::make_empty_message() const
 {
   TCPSenderMessage message;
@@ -34,14 +39,14 @@ TCPSenderMessage TCPSender::make_empty_message() const
 
 void TCPSender::push( const TransmitFunction& transmit )
 {
-
-  uint64_t windowSize = window_size_ == 0 ? 1 : window_size_;
-
+  if(window_size_){
+    is_Probe = false;
+  }
   // 若ByteStream更新新字节,构造发送信息
   uint64_t bytes_to_send = input_.reader().bytes_buffered(); // 总共需要发送的字节长度
   uint64_t payload_len = min( { input_.reader().bytes_buffered(),
                                 static_cast<uint64_t>( TCPConfig::MAX_PAYLOAD_SIZE ),
-                                static_cast<uint64_t>( windowSize ) - sequence_numbers_in_flight() } );
+                                static_cast<uint64_t>(window_size_ == 0 ? 1 : window_size_ ) - sequence_numbers_in_flight() } );
 
   TCPSenderMessage message = make_empty_message();
 
@@ -51,10 +56,17 @@ void TCPSender::push( const TransmitFunction& transmit )
   }
 
   do {
-    if ( static_cast<uint64_t>( windowSize ) - sequence_numbers_in_flight() == 0 ) {
+    // 若窗口非零 ，窗口不剩余空间
+    if (window_size_ && static_cast<uint64_t>( window_size_ == 0 ? 1 : window_size_) <= sequence_numbers_in_flight()) {
       return;
     }
 
+    // 若窗口为零 ，且已经窗口探测
+    if(is_Probe && !window_size_){
+      return;
+    }
+
+    // 若有错误
     if ( message.RST ) {
       transmit( message );
       return;
@@ -74,17 +86,21 @@ void TCPSender::push( const TransmitFunction& transmit )
     unAckedSegments[push_checkout] = message;
 
     // 增加未确认的分段数量
-    push_checkout += payload_len;
+    push_checkout += message.sequence_length();
 
     // 更新分段信息
     bytes_to_send -= payload_len;
 
-    // 更新
+    // 更新RTO
     is_RTO_double = 0;
 
     // 发送信息
     transmit( message );
 
+    if(!window_size_){
+      is_Probe = true;
+      return ;
+    }
   } while ( bytes_to_send > 0 );
 }
 
@@ -114,16 +130,16 @@ void TCPSender::receive( const TCPReceiverMessage& msg )
   // 更新窗口大小
   update_window_size( msg.window_size );
 
-  // 更新未确认的段
-  update_unacked_segments( msg.ackno );
-
   // 重置RTO相关状态
   resetRTO();
 }
 
 void TCPSender::tick( uint64_t ms_since_last_tick, const TransmitFunction& transmit )
 {
-  since_last_send += ms_since_last_tick;
+  if(sequence_numbers_in_flight()){
+      since_last_send += ms_since_last_tick;
+  }
+
 
   // 不会因为连续的零窗口确认而使 RTO 退避（不增加 RTO）。
   // 这种行为是为了维持连接和测试窗口是否已重新打开，而不是因为网络拥堵。
@@ -145,26 +161,6 @@ void TCPSender::tick( uint64_t ms_since_last_tick, const TransmitFunction& trans
 }
 
 // Push:
-
-// 进行“窗口探测”
-void TCPSender::handleWindowProbe( const TransmitFunction& transmit )
-{
-  if ( !window_size_ ) {
-    TCPSenderMessage message = make_empty_message();
-
-    // 处理payload
-    handlePayload( message );
-
-    // 处理FIN
-    if ( handleFIN( message ) ) {
-      return;
-    }
-
-    // 处理序列号
-    handleSqeno( message );
-    transmit( message );
-  }
-}
 
 // 处理SYN头
 bool TCPSender::handleInitialSYN( TCPSenderMessage& message )
@@ -194,7 +190,7 @@ bool TCPSender::handleFIN( TCPSenderMessage& message )
   }
 
   if ( input_.writer().is_closed() && !input_.reader().bytes_buffered()
-       && ( window_size_ == 0 ? 1 : window_size_ ) - message.sequence_length() > 0 ) {
+       && ( window_size_ == 0 ? 1 : window_size_ ) > message.sequence_length() ) {
     message.FIN = true;
     isFINSent_ = true;
   }
@@ -205,10 +201,11 @@ bool TCPSender::handleFIN( TCPSenderMessage& message )
 // 处理分段payload
 void TCPSender::handlePayload( TCPSenderMessage& message )
 {
+
   uint64_t payload_len
     = min( { input_.reader().bytes_buffered(),
              static_cast<uint64_t>( TCPConfig::MAX_PAYLOAD_SIZE ),
-             static_cast<uint64_t>( window_size_ == 0 ? 1 : window_size_ ) - sequence_numbers_in_flight() } );
+             static_cast<uint64_t>( window_size_ == 0 ? 1 : window_size_ ) - message.SYN - sequence_numbers_in_flight() } );
 
   // 处理分段的payload
   message.payload = std::string( input_.reader().peek().substr( 0, payload_len ) );
@@ -223,9 +220,6 @@ void TCPSender::handleSqeno( TCPSenderMessage& message )
 
   // 分段的序列号
   currentSeqNum_ = currentSeqNum_ + message.sequence_length();
-
-  // 待确认的序列号数量
-  unAckedSegmentsNums += message.sequence_length();
 }
 
 // receive
@@ -244,7 +238,8 @@ void TCPSender::handle_ack()
   auto it = unAckedSegments.begin();
   while ( it != unAckedSegments.end() ) {
     uint64_t seq_no = it->first;
-    uint64_t end_seq_no = seq_no + it->second.sequence_length();
+    uint64_t end_seq_no = seq_no + it->second.sequence_length() - 1;
+
     if ( end_seq_no < checkout ) {
       it = unAckedSegments.erase( it );
     } else {
@@ -292,6 +287,10 @@ void TCPSender::update_ack_info( const TCPReceiverMessage& msg )
 {
   // 设置SYN确认标志
   is_SYN_ACK = true;
+
+  // 设置窗口探测
+  is_Probe = false;
+
   // 更新最后的ACK序列号
   last_Ack_Seq = msg.ackno.value();
   // 解包ACK序列号并更新当前已确认的绝对序列号
@@ -302,15 +301,6 @@ void TCPSender::update_ack_info( const TCPReceiverMessage& msg )
 void TCPSender::update_window_size( uint16_t new_window_size )
 {
   window_size_ = new_window_size;
-}
-
-// 更新未确认的段
-void TCPSender::update_unacked_segments( const std::optional<Wrap32>& ackno )
-{
-  if ( ackno.has_value() ) {
-    // 计算并更新未确认的字节数
-    unAckedSegmentsNums = currentSeqNum_.distance( ackno.value() );
-  }
 }
 
 // tick

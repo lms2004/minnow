@@ -23,4 +23,4 @@ cmake --build build --target clean
 
 cmake --build build
 
-cd /mnt/e/Web/minnow/build && /usr/bin/ctest --output-on-failure --stop-on-failure --timeout 30 -R '^byte_stream_|^reassembler_|^wrapping|^recv|^send'
+cd /mnt/e/Web/minnow/build && /usr/bin/ctest --force-new-ctest-process --output-on-failure --stop-on-failure --timeout 30 -E 'speed_test|optimization|webget'
