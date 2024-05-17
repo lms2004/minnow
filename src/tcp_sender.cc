@@ -101,6 +101,7 @@ void TCPSender::push( const TransmitFunction& transmit )
       is_Probe = true;
       return ;
     }
+    
   } while ( bytes_to_send > 0 );
 }
 
@@ -108,19 +109,16 @@ void TCPSender::receive( const TCPReceiverMessage& msg )
 {
 // 检查返回的 message 是否有错误，如果有则返回
 if (check_for_errors(msg)) {
-    std::cout << "检测到 message 中的错误，函数退出。" << std::endl;
     return;
 }
 
 // 检查返回的 message 是否为无效 ACK，如果是则返回
 if (is_invalid_ack(msg.ackno)) {
-    std::cout << "无效的 ACK 号: " <<  "，函数退出。" << std::endl;
     return;
 }
 
 // 检查返回的 message 是否为重复 ACK，如果是则返回
 if (is_duplicate_ack(msg)) {
-    std::cout << "重复的 ACK 号: " <<"，函数退出。" << std::endl;
     return;
 }
 
@@ -190,14 +188,7 @@ bool TCPSender::handleInitialSYN( TCPSenderMessage& message )
 
 // 处理分段FIN
 bool TCPSender::handleFIN( TCPSenderMessage& message )
-{    // 调试输出语句
-    std::cout << "input_.writer().is_closed(): " << input_.writer().is_closed() << std::endl;
-    std::cout << "input_.reader().bytes_buffered(): " << input_.reader().bytes_buffered() << std::endl;
-    std::cout << "window_size_: " << window_size_ << std::endl;
-    std::cout << "有效窗口大小 (window_size_ == 0 ? 1 : window_size_): " 
-              << (window_size_ == 0 ? 1 : window_size_) << std::endl;
-    std::cout << "message.sequence_length(): " << message.sequence_length() << std::endl;
-
+{
   if ( isFINSent_ ) {
     return true;
   }
