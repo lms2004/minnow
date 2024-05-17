@@ -106,20 +106,26 @@ void TCPSender::push( const TransmitFunction& transmit )
 
 void TCPSender::receive( const TCPReceiverMessage& msg )
 {
-  // 检查返回message是否有错误，如果有则返回
-  if ( check_for_errors( msg ) ) {
+// 检查返回的 message 是否有错误，如果有则返回
+if (check_for_errors(msg)) {
+    std::cout << "检测到 message 中的错误，函数退出。" << std::endl;
     return;
-  }
+}
 
-  // 检查返回message是否为无效ACK，如果是则返回
-  if ( is_invalid_ack( msg.ackno ) ) {
+// 检查返回的 message 是否为无效 ACK，如果是则返回
+if (is_invalid_ack(msg.ackno)) {
+    std::cout << "无效的 ACK 号: " <<  "，函数退出。" << std::endl;
     return;
-  }
+}
 
-  // 检查返回message是否为重复ACK，如果是则返回
-  if ( is_duplicate_ack( msg ) ) {
+// 检查返回的 message 是否为重复 ACK，如果是则返回
+if (is_duplicate_ack(msg)) {
+    std::cout << "重复的 ACK 号: " <<"，函数退出。" << std::endl;
     return;
-  }
+}
+
+// 处理 message 的后续代码
+
 
   // 更新ACK信息
   update_ack_info( msg );
@@ -184,7 +190,14 @@ bool TCPSender::handleInitialSYN( TCPSenderMessage& message )
 
 // 处理分段FIN
 bool TCPSender::handleFIN( TCPSenderMessage& message )
-{
+{    // 调试输出语句
+    std::cout << "input_.writer().is_closed(): " << input_.writer().is_closed() << std::endl;
+    std::cout << "input_.reader().bytes_buffered(): " << input_.reader().bytes_buffered() << std::endl;
+    std::cout << "window_size_: " << window_size_ << std::endl;
+    std::cout << "有效窗口大小 (window_size_ == 0 ? 1 : window_size_): " 
+              << (window_size_ == 0 ? 1 : window_size_) << std::endl;
+    std::cout << "message.sequence_length(): " << message.sequence_length() << std::endl;
+
   if ( isFINSent_ ) {
     return true;
   }
@@ -255,6 +268,8 @@ bool TCPSender::check_for_errors( const TCPReceiverMessage& msg )
   if ( !msg.ackno.has_value() ) {
     if ( !msg.window_size ) {
       input_.set_error();
+    }else{
+      window_size_ = msg.window_size;
     }
     return true;
   }
@@ -270,16 +285,18 @@ bool TCPSender::check_for_errors( const TCPReceiverMessage& msg )
 
 // 检查返回message是否为无效ACK
 bool TCPSender::is_invalid_ack( const std::optional<Wrap32>& ackno ) const
-{
+{ 
   // 如果ackno大于当前序列号，则为无效ACK
-  return ackno > currentSeqNum_;
+  return ackno.value() > currentSeqNum_;
 }
 
 // 检查返回message是否为重复ACK
 bool TCPSender::is_duplicate_ack( const TCPReceiverMessage& msg ) const
-{
+{ 
   // 如果last_Ack_Seq有值且大于等于当前ackno并且窗口大小相同，则为重复ACK
-  return last_Ack_Seq.has_value() && last_Ack_Seq >= msg.ackno && window_size_ == msg.window_size;
+    return last_Ack_Seq.has_value() 
+           && last_Ack_Seq >= msg.ackno 
+           && window_size_ == msg.window_size;
 }
 
 // 更新ACK信息
