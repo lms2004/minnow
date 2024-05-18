@@ -1,13 +1,13 @@
 #pragma once
 #include <chrono>
 
-#include<unordered_map>
-#include <queue>
-#include <memory>
-
 #include "address.hh"
+#include "arp_message.hh"
 #include "ethernet_frame.hh"
 #include "ipv4_datagram.hh"
+#include <memory>
+#include <queue>
+#include <unordered_map>
 
 // 一个连接IP（互联网层或网络层）与Ethernet（网络访问层或链路层）的“网络接口”。
 
@@ -26,28 +26,28 @@ public:
   class OutputPort
   {
   public:
-    virtual void transmit(const NetworkInterface& sender, const EthernetFrame& frame) = 0;
+    virtual void transmit( const NetworkInterface& sender, const EthernetFrame& frame ) = 0;
     virtual ~OutputPort() = default;
   };
 
   // 使用给定的Ethernet（网络访问层）和IP（互联网层）地址构造网络接口
-  NetworkInterface(std::string_view name,
-                   std::shared_ptr<OutputPort> port,
-                   const EthernetAddress& ethernet_address,
-                   const Address& ip_address);
+  NetworkInterface( std::string_view name,
+                    std::shared_ptr<OutputPort> port,
+                    const EthernetAddress& ethernet_address,
+                    const Address& ip_address );
 
   // 发送Internet数据报，封装在Ethernet帧中（如果已知Ethernet目标地址）。
   // 将使用ARP查找下一跳的Ethernet目标地址。发送通过在帧上调用“transmit”（成员变量）完成。
-  void send_datagram(const InternetDatagram& dgram, const Address& next_hop);
+  void send_datagram( const InternetDatagram& dgram, const Address& next_hop );
 
   // 接收Ethernet帧并做出适当的响应。
   // 如果类型是IPv4，则将数据报推送到datagrams_in队列。
   // 如果类型是ARP请求，则从“发送者”字段中学习映射，并发送ARP回复。
   // 如果类型是ARP回复，则从“发送者”字段中学习映射。
-  void recv_frame(const EthernetFrame& frame);
+  void recv_frame( const EthernetFrame& frame );
 
   // 当时间流逝时定期调用
-  void tick(size_t ms_since_last_tick);
+  void tick( size_t ms_since_last_tick );
 
   // 访问器
   const std::string& name() const { return name_; }
@@ -57,15 +57,15 @@ public:
 
 private:
   // IPv4创建以太网帧
-  bool create_IPv4frame(const InternetDatagram& dgram, uint32_t next_hop, EthernetFrame& frame);
- 
+  bool create_IPv4frame( const InternetDatagram& dgram, uint32_t next_hop, EthernetFrame& frame );
+
   // ARP创建以太网帧
-  bool create_ARPframe(const ARPMessage & arp_msg);
+  bool create_ARPframe( const ARPMessage& arp_msg );
 
   // 发送ARP请求获取目标MAC地址
-  void send_arp_request(uint32_t next_hop_ip);
+  void send_arp_request( uint32_t next_hop_ip );
 
-  bool reply_arp_request(const ARPMessage & arp_msg);
+  bool reply_arp_request( const ARPMessage& arp_msg );
 
   void prints();
 
@@ -74,7 +74,7 @@ private:
 
   // 物理输出端口（+一个使用它发送Ethernet帧的辅助函数“传输”）
   std::shared_ptr<OutputPort> port_;
-  void transmit(const EthernetFrame& frame) const { port_->transmit(*this, frame); }
+  void transmit( const EthernetFrame& frame ) const { port_->transmit( *this, frame ); }
 
   // 接口的Ethernet（也称为硬件、网络访问层或链路层）地址
   EthernetAddress ethernet_address_;
@@ -86,14 +86,14 @@ private:
   std::queue<InternetDatagram> datagrams_received_ {};
 
   // ARP映射
-  std::unordered_map<uint32_t,EthernetAddress> ipToEthernetMap;
+  std::unordered_map<uint32_t, EthernetAddress> ipToEthernetMap;
 
   // ARP请求时间队列
-  std::unordered_map<uint32_t,uint64_t> recent_arp_requests;
+  std::unordered_map<uint32_t, uint64_t> recent_arp_requests;
 
   // 等待发送的数据报
-  std::unordered_map<uint32_t,InternetDatagram> waiting_datagrams_;
-  
+  std::unordered_map<uint32_t, InternetDatagram> waiting_datagrams_;
+
   // 当前时间
   uint64_t currentTime = 0;
 };

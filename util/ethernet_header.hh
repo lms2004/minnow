@@ -13,7 +13,7 @@ using EthernetAddress = std::array<uint8_t, 6>;
 constexpr EthernetAddress ETHERNET_BROADCAST = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
 
 // 以太网地址的可打印表示
-std::string to_string(EthernetAddress address);
+std::string to_string( EthernetAddress address );
 
 // 以太网帧头部
 struct EthernetHeader
@@ -30,8 +30,8 @@ struct EthernetHeader
   std::string to_string() const;
 
   // 解析头部信息
-  void parse(Parser& parser);
+  void parse( Parser& parser );
 
   // 序列化头部信息
-  void serialize(Serializer& serializer) const;
+  void serialize( Serializer& serializer ) const;
 };

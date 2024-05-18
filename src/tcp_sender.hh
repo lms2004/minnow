@@ -113,8 +113,8 @@ private:
   std::map<uint64_t, TCPSenderMessage> unAckedSegments;
   bool is_SYN_ACK = false; // 记录窗口是否確定
 
-  uint64_t checkout = 0;            // 当前已经ack的绝对序列号
-  uint64_t push_checkout = 0;       // 当前已经push的绝对序列号
+  uint64_t checkout = 0;      // 当前已经ack的绝对序列号
+  uint64_t push_checkout = 0; // 当前已经push的绝对序列号
 
   uint64_t since_last_send = 0; // 记录上次send的时间
   bool is_RTO_double = false;   // 记录非零窗口是否需要退避RTO（RTO增加）

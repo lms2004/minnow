@@ -60,6 +60,6 @@ struct IPv4Header
   // 返回以人类可读格式包含头部信息的字符串
   std::string to_string() const;
 
-  void parse(Parser& parser);
-  void serialize(Serializer& serializer) const;
+  void parse( Parser& parser );
+  void serialize( Serializer& serializer ) const;
 };

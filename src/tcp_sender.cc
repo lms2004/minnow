@@ -7,8 +7,8 @@ using namespace std;
 uint64_t TCPSender::sequence_numbers_in_flight() const
 {
   uint64_t Nums = 0;
-  for (const auto& Segment : unAckedSegments) {
-      Nums += Segment.second.sequence_length(); // 访问length字段并累加
+  for ( const auto& Segment : unAckedSegments ) {
+    Nums += Segment.second.sequence_length(); // 访问length字段并累加
   }
   return Nums;
 }
@@ -25,7 +25,6 @@ uint64_t TCPSender::consecutive_retransmissions() const
   return exponent + is_RTO_double;
 }
 
-
 TCPSenderMessage TCPSender::make_empty_message() const
 {
   TCPSenderMessage message;
@@ -39,14 +38,15 @@ TCPSenderMessage TCPSender::make_empty_message() const
 
 void TCPSender::push( const TransmitFunction& transmit )
 {
-  if(window_size_){
+  if ( window_size_ ) {
     is_Probe = false;
   }
   // 若ByteStream更新新字节,构造发送信息
   uint64_t bytes_to_send = input_.reader().bytes_buffered(); // 总共需要发送的字节长度
-  uint64_t payload_len = min( { input_.reader().bytes_buffered(),
-                                static_cast<uint64_t>( TCPConfig::MAX_PAYLOAD_SIZE ),
-                                static_cast<uint64_t>(window_size_ == 0 ? 1 : window_size_ ) - sequence_numbers_in_flight() } );
+  uint64_t payload_len
+    = min( { input_.reader().bytes_buffered(),
+             static_cast<uint64_t>( TCPConfig::MAX_PAYLOAD_SIZE ),
+             static_cast<uint64_t>( window_size_ == 0 ? 1 : window_size_ ) - sequence_numbers_in_flight() } );
 
   TCPSenderMessage message = make_empty_message();
 
@@ -57,12 +57,13 @@ void TCPSender::push( const TransmitFunction& transmit )
 
   do {
     // 若窗口非零 ，窗口不剩余空间
-    if (window_size_ && static_cast<uint64_t>( window_size_ == 0 ? 1 : window_size_) <= sequence_numbers_in_flight()) {
+    if ( window_size_
+         && static_cast<uint64_t>( window_size_ == 0 ? 1 : window_size_ ) <= sequence_numbers_in_flight() ) {
       return;
     }
 
     // 若窗口为零 ，且已经窗口探测
-    if(is_Probe && !window_size_){
+    if ( is_Probe && !window_size_ ) {
       return;
     }
 
@@ -97,33 +98,32 @@ void TCPSender::push( const TransmitFunction& transmit )
     // 发送信息
     transmit( message );
 
-    if(!window_size_){
+    if ( !window_size_ ) {
       is_Probe = true;
-      return ;
+      return;
     }
-    
+
   } while ( bytes_to_send > 0 );
 }
 
 void TCPSender::receive( const TCPReceiverMessage& msg )
 {
-// 检查返回的 message 是否有错误，如果有则返回
-if (check_for_errors(msg)) {
+  // 检查返回的 message 是否有错误，如果有则返回
+  if ( check_for_errors( msg ) ) {
     return;
-}
+  }
 
-// 检查返回的 message 是否为无效 ACK，如果是则返回
-if (is_invalid_ack(msg.ackno)) {
+  // 检查返回的 message 是否为无效 ACK，如果是则返回
+  if ( is_invalid_ack( msg.ackno ) ) {
     return;
-}
+  }
 
-// 检查返回的 message 是否为重复 ACK，如果是则返回
-if (is_duplicate_ack(msg)) {
+  // 检查返回的 message 是否为重复 ACK，如果是则返回
+  if ( is_duplicate_ack( msg ) ) {
     return;
-}
+  }
 
-// 处理 message 的后续代码
-
+  // 处理 message 的后续代码
 
   // 更新ACK信息
   update_ack_info( msg );
@@ -140,10 +140,9 @@ if (is_duplicate_ack(msg)) {
 
 void TCPSender::tick( uint64_t ms_since_last_tick, const TransmitFunction& transmit )
 {
-  if(sequence_numbers_in_flight()){
-      since_last_send += ms_since_last_tick;
+  if ( sequence_numbers_in_flight() ) {
+    since_last_send += ms_since_last_tick;
   }
-
 
   // 不会因为连续的零窗口确认而使 RTO 退避（不增加 RTO）。
   // 这种行为是为了维持连接和测试窗口是否已重新打开，而不是因为网络拥堵。
@@ -206,10 +205,10 @@ bool TCPSender::handleFIN( TCPSenderMessage& message )
 void TCPSender::handlePayload( TCPSenderMessage& message )
 {
 
-  uint64_t payload_len
-    = min( { input_.reader().bytes_buffered(),
-             static_cast<uint64_t>( TCPConfig::MAX_PAYLOAD_SIZE ),
-             static_cast<uint64_t>( window_size_ == 0 ? 1 : window_size_ ) - message.SYN - sequence_numbers_in_flight() } );
+  uint64_t payload_len = min( { input_.reader().bytes_buffered(),
+                                static_cast<uint64_t>( TCPConfig::MAX_PAYLOAD_SIZE ),
+                                static_cast<uint64_t>( window_size_ == 0 ? 1 : window_size_ ) - message.SYN
+                                  - sequence_numbers_in_flight() } );
 
   // 处理分段的payload
   message.payload = std::string( input_.reader().peek().substr( 0, payload_len ) );
@@ -259,7 +258,7 @@ bool TCPSender::check_for_errors( const TCPReceiverMessage& msg )
   if ( !msg.ackno.has_value() ) {
     if ( !msg.window_size ) {
       input_.set_error();
-    }else{
+    } else {
       window_size_ = msg.window_size;
     }
     return true;
@@ -276,18 +275,16 @@ bool TCPSender::check_for_errors( const TCPReceiverMessage& msg )
 
 // 检查返回message是否为无效ACK
 bool TCPSender::is_invalid_ack( const std::optional<Wrap32>& ackno ) const
-{ 
+{
   // 如果ackno大于当前序列号，则为无效ACK
   return ackno.value() > currentSeqNum_;
 }
 
 // 检查返回message是否为重复ACK
 bool TCPSender::is_duplicate_ack( const TCPReceiverMessage& msg ) const
-{ 
+{
   // 如果last_Ack_Seq有值且大于等于当前ackno并且窗口大小相同，则为重复ACK
-    return last_Ack_Seq.has_value() 
-           && last_Ack_Seq >= msg.ackno 
-           && window_size_ == msg.window_size;
+  return last_Ack_Seq.has_value() && last_Ack_Seq >= msg.ackno && window_size_ == msg.window_size;
 }
 
 // 更新ACK信息
