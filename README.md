@@ -26,3 +26,5 @@ cmake --build build
 cd /mnt/e/Web/minnow/build && /usr/bin/ctest --force-new-ctest-process --output-on-failure --stop-on-failure --timeout 30 -E 'speed_test|optimization|webget'
 
 cd /mnt/e/Web/minnow/build && /usr/bin/ctest --output-on-failure --stop-on-failure --timeout 30 -R '^net_interface'
+
+cd /mnt/e/Web/minnow/build && /usr/bin/ctest --output-on-failure --stop-on-failure --timeout 30 -R '^net_interface|^router'
