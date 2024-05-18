@@ -5,20 +5,23 @@
 
 #include <vector>
 
+// 以太网帧结构体
 struct EthernetFrame
 {
-  EthernetHeader header {};
-  std::vector<std::string> payload {};
+  EthernetHeader header {}; // 以太网帧头部
+  std::vector<std::string> payload {}; // 数据负载
 
-  void parse( Parser& parser )
+  // 解析以太网帧
+  void parse(Parser& parser)
   {
-    header.parse( parser );
-    parser.all_remaining( payload );
+    header.parse(parser); // 解析帧头部
+    parser.all_remaining(payload); // 解析剩余数据作为负载
   }
 
-  void serialize( Serializer& serializer ) const
+  // 序列化以太网帧
+  void serialize(Serializer& serializer) const
   {
-    header.serialize( serializer );
-    serializer.buffer( payload );
+    header.serialize(serializer); // 序列化帧头部
+    serializer.buffer(payload); // 序列化负载数据
   }
 };
